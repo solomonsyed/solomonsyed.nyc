@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Portfolio OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;0,900;1,500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --desk:#E7D45E;
+    --window:#FFFFFF;
+    --ink:#1B1B1B;
+    --muted:#6C6A5F;
+    --border:#1B1B1B;
+    --shadow: 6px 6px 0 rgba(27,27,27,.9);
+    --shadow-soft: 3px 3px 0 rgba(27,27,27,.9);
+    --radius:14px;
+    --serif:"Playfair Display", Georgia, serif;
+    --sans:"DM Sans", system-ui, sans-serif;
+    --mono:"DM Mono", ui-monospace, monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; }
+  body{
+    font-family:var(--sans); color:var(--ink); background:var(--desk);
+    overflow:hidden; -webkit-font-smoothing:antialiased;
+  }
+
+  #desktop{
+    position:fixed; inset:0;
+    background-color:var(--desk);
+    background-image:radial-gradient(rgba(27,27,27,.055) 1.2px, transparent 1.2px);
+    background-size:22px 22px;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+
+  /* ---------- Menu bar ---------- */
+  .menubar{
+    height:34px; flex:0 0 34px;
+    display:flex; align-items:center; gap:18px; padding:0 14px;
+    background:rgba(255,255,255,.55); backdrop-filter:blur(4px);
+    border-bottom:2px solid var(--border);
+    font-family:var(--mono); font-size:13px; position:relative; z-index:9000;
+  }
+  .menubar .brand{ font-weight:500; letter-spacing:.02em; }
+  .menubar .brand::before{ content:"\25C8"; margin-right:7px; }
+  .menu-item{
+    background:none; border:none; font:inherit; color:var(--ink);
+    cursor:pointer; padding:3px 7px; border-radius:6px;
+  }
+  .menu-item:hover{ background:var(--ink); color:#fff; }
+  .menu-right{ margin-left:auto; display:flex; align-items:center; gap:16px; }
+  .menu-right span{ white-space:nowrap; }
+  .menu-right .glyphs{ letter-spacing:2px; }
+  #clock{ font-weight:500; }
+
+  /* ---------- Stage: icons + single panel ---------- */
+  #stage{
+    flex:1 1 auto; overflow:auto; position:relative;
+    display:flex; flex-direction:row; align-items:flex-start;
+    gap:34px; padding:26px;
+  }
+
+  .icon-field{ flex:0 0 auto; display:flex; flex-direction:column; gap:6px; }
+  .desk-icon{
+    width:112px; padding:10px 6px 8px; background:none;
+    border:2px solid transparent; border-radius:12px;
+    display:flex; flex-direction:column; align-items:center; gap:7px;
+    cursor:pointer; color:var(--ink);
+    font-family:var(--sans); font-size:12.5px; font-weight:500;
+    text-align:center; line-height:1.2; transition:transform .08s ease;
+  }
+  .desk-icon .glyph{
+    width:52px; height:52px; border-radius:13px; border:2px solid var(--border);
+    display:grid; place-items:center; font-size:26px; background:#fff;
+    box-shadow:var(--shadow-soft); transition:transform .08s ease, box-shadow .08s ease;
+  }
+  .desk-icon:hover .glyph{ transform:translate(-1px,-1px); box-shadow:4px 4px 0 rgba(27,27,27,.9); }
+  .desk-icon:active{ transform:scale(.96); }
+  .desk-icon.selected{ background:rgba(27,27,27,.12); border-color:rgba(27,27,27,.28); }
+  .desk-icon.selected .glyph{ background:var(--ink); color:#fff; }
+  .desk-icon .label{ text-shadow:0 1px 0 rgba(255,255,255,.6); }
+
+  /* ---------- The single locked window/panel ---------- */
+  #panel{
+    display:none;
+    flex:0 1 auto; width:min(620px, 58vw); align-self:flex-start;
+    background:var(--window); border:2px solid var(--border);
+    border-radius:var(--radius); box-shadow:var(--shadow);
+    flex-direction:column; overflow:hidden; animation:pop .16s ease;
+  }
+  #panel.open{ display:flex; }
+  @keyframes pop{ from{ transform:translateY(6px) scale(.99); opacity:0; } to{ transform:none; opacity:1; } }
+
+  .titlebar{
+    height:36px; flex:0 0 36px; display:flex; align-items:center; gap:8px; padding:0 10px;
+    border-bottom:2px solid var(--border);
+    background:
+      repeating-linear-gradient(180deg, rgba(27,27,27,.05) 0 2px, transparent 2px 4px), #f6f4ea;
+    user-select:none; font-family:var(--mono); font-size:13px;
+  }
+  .titlebar .tb-icon{ font-size:15px; }
+  .titlebar .tb-title{ font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .win-controls{ margin-left:auto; display:flex; gap:6px; }
+  .win-btn{
+    width:22px; height:22px; border:2px solid var(--border); border-radius:7px;
+    background:#fff; cursor:pointer; display:grid; place-items:center;
+    font-size:12px; line-height:1; padding:0; color:var(--ink); font-family:var(--sans);
+  }
+  .win-btn.close:hover{ background:#d64b3f; border-color:#d64b3f; color:#fff; }
+
+  .win-body{ padding:20px 22px; overflow:auto; max-height:calc(100vh - 120px); }
+
+  /* ---------- Welcome / About ---------- */
+  .about{ display:flex; gap:22px; align-items:flex-start; }
+  .about .portrait{
+    flex:0 0 160px; height:210px; border:2px solid var(--border); border-radius:10px;
+    overflow:hidden; background-image:linear-gradient(145deg,#2b2b2b,#4a4a4a);
+    display:grid; place-items:center; color:#e9e9e9; font-size:40px;
+  }
+  .about .portrait img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .about h1{ font-family:var(--serif); font-weight:700; font-size:34px; line-height:1.05; margin:0 0 4px; }
+  .about h1 .lead{ display:block; font-size:20px; font-weight:500; }
+  .about .kicker{ color:var(--muted); font-size:13px; margin:0 0 14px; font-family:var(--mono); }
+  .about p{ font-size:14.5px; line-height:1.55; margin:0 0 14px; max-width:44ch; }
+  .about .hint{ font-size:13px; color:var(--muted); }
+  .btn-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; }
+  .btn{
+    font-family:var(--sans); font-weight:600; font-size:13px;
+    border:2px solid var(--border); border-radius:9px; background:#fff; color:var(--ink);
+    padding:9px 14px; cursor:pointer; box-shadow:var(--shadow-soft);
+    transition:transform .08s ease, box-shadow .08s ease; text-decoration:none;
+    display:inline-flex; align-items:center; gap:7px;
+  }
+  .btn:hover{ transform:translate(-1px,-1px); box-shadow:4px 4px 0 rgba(27,27,27,.9); }
+  .btn:active{ transform:translate(1px,1px); box-shadow:1px 1px 0 rgba(27,27,27,.9); }
+  .btn.primary{ background:var(--ink); color:#fff; }
+  .btn.ghost{ box-shadow:none; border-style:dashed; }
+
+  /* ---------- Category (file grid) ---------- */
+  .folder-head{ display:flex; align-items:baseline; gap:12px; margin:0 0 16px; }
+  .folder-head h2{ font-family:var(--serif); font-weight:700; font-size:24px; margin:0; }
+  .folder-head .count{ font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .file-grid{ display:flex; flex-direction:column; gap:14px; }
+  .file{
+    border:2px solid var(--border); border-radius:12px; background:#fff; overflow:hidden;
+    display:flex; flex-direction:row; align-items:stretch;
+  }
+  .file-meta{ padding:14px 16px; display:flex; flex-direction:column; gap:6px; flex:1; min-width:0; order:1; }
+  .thumb{
+    flex:0 0 168px; width:168px; border-left:2px solid var(--border);
+    display:grid; place-items:center; font-size:34px; color:#fff; cursor:pointer;
+    position:relative; overflow:hidden; order:2;
+  }
+  .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .thumb .view-tag{
+    position:absolute; inset:auto 8px 8px auto; font-family:var(--mono); font-size:10px;
+    background:rgba(0,0,0,.6); color:#fff; padding:3px 6px; border-radius:6px; opacity:0; transition:opacity .12s;
+  }
+  .thumb:hover .view-tag{ opacity:1; }
+  .file-meta h3{ font-size:14.5px; margin:0; font-weight:700; }
+  .file-meta p{ font-size:12.5px; color:var(--muted); margin:0; line-height:1.45; flex:1; }
+  .file-actions{ display:flex; gap:8px; margin-top:4px; }
+  .file-actions .btn{ padding:7px 10px; font-size:12px; box-shadow:2px 2px 0 rgba(27,27,27,.9); flex:1; justify-content:center; }
+  @media (max-width:420px){
+    .file{ flex-direction:column; }
+    .thumb{ order:0; flex:0 0 auto; width:100%; aspect-ratio:16/9; border-left:none; border-bottom:2px solid var(--border); }
+    .file-meta{ order:1; }
+  }
+
+  .preview .big.has-video{ padding:0; background:#000 !important; }
+  .preview .big iframe{ width:100%; height:100%; border:0; display:block; }
+
+  /* ---------- Preview (in-panel) ---------- */
+  .back-link{
+    background:none; border:none; font-family:var(--mono); font-size:12px; color:var(--ink);
+    cursor:pointer; padding:0; margin:0 0 14px; display:inline-flex; gap:6px; align-items:center;
+  }
+  .back-link:hover{ text-decoration:underline; }
+  .preview .big{
+    width:100%; aspect-ratio:16/9; border:2px solid var(--border); border-radius:10px;
+    display:grid; place-items:center; font-size:64px; color:#fff; margin-bottom:16px; overflow:hidden;
+  }
+  .preview .big img{ width:100%; height:100%; object-fit:cover; }
+  .preview h2{ font-family:var(--serif); font-size:24px; margin:0 0 4px; }
+  .preview .tagline{ font-family:var(--mono); font-size:12px; color:var(--muted); margin:0 0 12px; }
+  .preview p{ font-size:14px; line-height:1.55; margin:0 0 16px; }
+
+  /* ---------- Contact / Help ---------- */
+  .rows{ display:flex; flex-direction:column; gap:10px; margin-top:8px; }
+  .rows a{ color:var(--ink); font-weight:600; text-decoration:none; }
+  .rows a:hover{ text-decoration:underline; }
+  .info p{ font-size:14px; line-height:1.55; }
+
+  /* ---------- Essays (list + reader) ---------- */
+  .essay-list{ display:flex; flex-direction:column; }
+  .essay-item{
+    text-align:left; background:none; border:none; cursor:pointer;
+    border-top:2px solid rgba(27,27,27,.12); padding:16px 4px;
+    display:flex; flex-direction:column; gap:5px; font-family:var(--sans);
+    transition:background .1s ease; border-radius:8px;
+  }
+  .essay-item:first-child{ border-top:none; }
+  .essay-item:hover{ background:rgba(27,27,27,.05); }
+  .essay-item .e-title{ font-family:var(--serif); font-size:19px; font-weight:700; color:var(--ink); }
+  .essay-item .e-meta{ font-family:var(--mono); font-size:11px; color:var(--muted); }
+  .essay-item .e-excerpt{ font-size:13px; color:var(--muted); line-height:1.5; }
+  .essay-reader{ max-width:62ch; }
+  .essay-reader h2{ font-family:var(--serif); font-size:27px; line-height:1.1; margin:0 0 4px; }
+  .essay-reader .e-date{ font-family:var(--mono); font-size:12px; color:var(--muted); margin:0 0 18px; }
+  .essay-reader p{ font-size:15px; line-height:1.7; margin:0 0 15px; }
+
+  /* ---------- Tablet: panel drops below the icons ---------- */
+  @media (max-width:1023px){
+    #stage{ flex-direction:column; gap:22px; }
+    .icon-field{ flex-direction:row; flex-wrap:wrap; align-self:stretch; gap:10px; }
+    #panel{ width:100%; max-width:760px; }
+    .win-body{ max-height:none; }
+  }
+
+  /* ---------- Phone: panel replaces the whole view ---------- */
+  @media (max-width:599px){
+    #stage{ padding:16px; }
+    .desk-icon{ width:96px; }
+    #panel.open{
+      position:fixed; inset:34px 0 0 0; width:100%; max-width:none;
+      margin:0; border-radius:0; border-left:none; border-right:none; z-index:9500;
+    }
+    #panel.open .win-body{ max-height:none; height:calc(100% - 36px); }
+    .about{ flex-direction:column; }
+    .about .portrait{ width:100%; flex-basis:auto; height:220px; }
+    .menu-right .hide-sm{ display:none; }
+  }
+
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<div id="desktop">
+
+  <div class="menubar">
+    <span class="brand">Portfolio OS</span>
+    <button class="menu-item" data-open="welcome">About</button>
+    <button class="menu-item" data-open="contact">Contact</button>
+    <button class="menu-item" data-open="help">Help</button>
+    <div class="menu-right">
+      <span class="glyphs hide-sm">&#8981; &#9646; &#8962;</span>
+      <span class="hide-sm">San Francisco, USA</span>
+      <span id="clock">&mdash;</span>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div class="icon-field" id="iconField"></div>
+    <div id="panel"></div>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================================
+   EDIT YOUR PORTFOLIO HERE
+   ---------------------------------------------------------------------
+   owner ...... your name / role / blurb / email / links
+   PORTFOLIO .. categories (Apps, Games, Music, Video). Each work supports:
+       title, desc, glyph (emoji tile if no image), hue (tile color),
+       img (optional real thumbnail URL),
+       youtube (optional YouTube video ID -- auto-builds the thumbnail
+                AND embeds a real player on the dedicated page; if set,
+                you can skip img/glyph/hue for that item),
+       view (URL to view), download (optional URL; omit to hide button)
+   ESSAYS ..... optional, toggled on/off further down (see its own comment)
+   WRITING .... a Writing folder for stories/scripts/games in any format,
+                same fields as above (see its own comment)
+   ===================================================================== */
+
+  const owner = {
+    name: "Alan Fletcher",
+    role: "Designer & maker of small software",
+    blurb: "For the past ten years I've built applications, games, music, and video work \u2014 a little of everything. This desktop is where it all lives. Open a folder to poke around.",
+    portrait: "",
+    email: "you@example.com",
+    links: { "Website":"#", "GitHub":"#", "Bandcamp":"#" }
+  };
+
+  const PORTFOLIO = {
+    apps: {
+      label: "Applications\n& Utilities", glyph:"\uD83D\uDDA5\uFE0F", hue:"#3B6FD4", title:"Applications & Utilities",
+      items: [
+        { title:"Menubar Weather", desc:"A tiny always-on forecast that lives in your menu bar.", glyph:"\uD83C\uDF24\uFE0F", hue:"#4a86e8", view:"#", download:"#" },
+        { title:"Clipboard Vault", desc:"Searchable clipboard history with encrypted snippets.", glyph:"\uD83D\uDCCB", hue:"#3f8f6b", view:"#", download:"#" },
+        { title:"Focus Timer", desc:"Pomodoro timer with gentle nudges and session stats.", glyph:"\u23F1\uFE0F", hue:"#c0603b", view:"#" },
+        { title:"Batch Rename", desc:"Rename hundreds of files with live-preview rules.", glyph:"\uD83C\uDFF7\uFE0F", hue:"#6a5acd", view:"#", download:"#" }
+      ]
+    },
+    games: {
+      label:"Games", glyph:"\uD83D\uDD79\uFE0F", hue:"#C0603B", title:"Games",
+      items: [
+        { title:"Neon Drift", desc:"A synthwave racer built in a weekend game jam.", glyph:"\uD83C\uDFCE\uFE0F", hue:"#d6336c", view:"#" },
+        { title:"Pixel Dungeon", desc:"Roguelike crawler with hand-drawn 16\u00D716 tiles.", glyph:"\uD83D\uDDDD\uFE0F", hue:"#5f4b8b", view:"#", download:"#" },
+        { title:"Orbital", desc:"Physics puzzler about slingshotting around planets.", glyph:"\uD83E\uDE90", hue:"#2f6f8f", view:"#" }
+      ]
+    },
+    music: {
+      label:"Music", glyph:"\uD83C\uDFA7", hue:"#3F8F6B", title:"Music",
+      items: [
+        { title:"Midnight EP", desc:"Four tracks of late-night ambient house.", glyph:"\uD83C\uDF19", hue:"#3f3d8f", view:"#", download:"#" },
+        { title:"Lo-Fi Pack", desc:"A sample pack of dusty drums and warm keys.", glyph:"\uD83D\uDCFC", hue:"#8f6b3f", view:"#", download:"#" },
+        { title:"Synth Sketch", desc:"An improvised patch demo on a modular rig.", glyph:"\uD83C\uDFB9", hue:"#6b3f8f", view:"#" }
+      ]
+    },
+    video: {
+      label:"Video\nProduction", glyph:"\uD83C\uDFAC", hue:"#7A4FB5", title:"Video Production",
+      items: [
+        { title:"Brand Film \u2014 Acme", desc:"90-second hero film shot and edited in-house.", glyph:"\uD83C\uDF9E\uFE0F", hue:"#b5424f", view:"#" },
+        { title:"Motion Reel 2026", desc:"A cut of my favorite animated brand moments.", glyph:"\u2728", hue:"#4f7ab5", view:"#", download:"#" },
+        { title:"Music Video \u2014 Halo", desc:"Directed and colored for an indie release. This item uses the \"youtube\" field, so its thumbnail and dedicated page pull straight from YouTube \u2014 see the code comment above for how to do this for your own videos.", youtube:"dQw4w9WgXcQ", hue:"#3f8f8f" }
+      ]
+    }
+  };
+
+  /* ---------------------------------------------------------------------
+     ESSAYS  --  optional section, HIDDEN by default.
+
+     SHOW / HIDE the Essays icon:
+        set  enabled: true   to show it,
+        set  enabled: false  to hide it.
+     This boolean is the ONLY toggle, and only you (editing this file)
+     can see it. Visitors never get a switch of their own.
+
+     ADD AN ESSAY: copy one { ... } block into the items array below.
+        title    -- the essay's title
+        date     -- anything you like ("2026", "March 2026", "--")
+        excerpt  -- one-line teaser shown in the list (optional)
+        body     -- the full essay, written between backticks ` `.
+                    Separate paragraphs with a BLANK LINE. Ordinary
+                    single line breaks are kept as line breaks.
+        view     -- (optional) URL to the original / canonical version
+        download -- (optional) URL to a downloadable copy
+     --------------------------------------------------------------------- */
+  const ESSAYS = {
+    enabled: false,
+    items: [
+      {
+        title: "On Making Small Software",
+        date: "2026",
+        excerpt: "Why the tools that fit in your head tend to last.",
+        body: `The first thing I ever shipped did exactly one job, and it did it in about forty lines. I have never stopped thinking about how good that felt.
+
+Big software promises to do everything and, in the trying, forgets the person holding it. Small software makes one promise and keeps it. You can read the whole thing in an afternoon, change it in an evening, and trust it for years.
+
+This folder is mostly small things. That is on purpose.`
+      },
+      {
+        title: "A Second Essay",
+        date: "2026",
+        excerpt: "Replace me, or delete this whole block.",
+        body: `Write here. Leave a blank line between paragraphs and they will render as separate paragraphs.
+
+Like this one.`
+      }
+    ]
+  };
+
+  /* ---------------------------------------------------------------------
+     WRITING  --  a portfolio folder for written work in any format:
+     short stories, scripts, an Ink/Inky game, PDFs, Google Docs links,
+     whatever. It behaves exactly like Apps / Games / Music / Video below.
+
+     Each item supports:
+        title, desc      -- shown on the left of the row
+        glyph, hue        -- fallback icon + color for the thumbnail
+                              (used when there's no img/youtube)
+        img               -- (optional) a real thumbnail image URL
+        youtube           -- (optional) a YouTube video ID -- auto-builds
+                              the thumbnail AND embeds a player on the
+                              dedicated page. Leave out for non-video work.
+        view              -- URL to the piece itself (an Inky/Ink game
+                              exported as HTML, a PDF, a Google Doc link,
+                              a itch.io page, etc.)
+        download          -- (optional) URL to a downloadable file
+     --------------------------------------------------------------------- */
+  const WRITING = {
+    label: "Writing", glyph: "\u270E", hue: "#8F5A3F", title: "Writing",
+    items: [
+      {
+        title: "Anthropophagy (Ink game)",
+        desc: "An interactive fiction game built in Ink -- open to play in the browser.",
+        glyph: "\uD83D\uDCDC", hue: "#5f4b3f",
+        view: "#", download: "#"
+      },
+      {
+        title: "A Short Story",
+        desc: "Replace me with a real piece, or delete this block.",
+        glyph: "\uD83D\uDCC4", hue: "#3f6b5a",
+        view: "#"
+      }
+    ]
+  };
+
+/* ===================================================================== */
+
+  PORTFOLIO.writing = WRITING;   // register Writing as a normal category
+
+  const panel = document.getElementById('panel');
+  const field = document.getElementById('iconField');
+  const iconButtons = new Map();
+  let active = null;
+
+  /* clock */
+  function tick(){
+    const now = new Date();
+    const date = now.toLocaleDateString('en-US',{ weekday:'short', month:'short', day:'numeric' });
+    const time = now.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' });
+    document.getElementById('clock').textContent = date + '  ' + time;
+  }
+  tick(); setInterval(tick, 20000);
+
+  /* helpers */
+  function el(tag, cls, html){ const n=document.createElement(tag); if(cls)n.className=cls; if(html!=null)n.innerHTML=html; return n; }
+
+  const META = {
+    welcome:{ icon:"\uD83D\uDCD6", title:"Welcome To My Portfolio" },
+    contact:{ icon:"\u2709\uFE0F", title:"Contact" },
+    help:{    icon:"\u2753", title:"Help" },
+    apps:{ icon:PORTFOLIO.apps.glyph, title:PORTFOLIO.apps.title },
+    games:{ icon:PORTFOLIO.games.glyph, title:PORTFOLIO.games.title },
+    music:{ icon:PORTFOLIO.music.glyph, title:PORTFOLIO.music.title },
+    video:{ icon:PORTFOLIO.video.glyph, title:PORTFOLIO.video.title },
+    essays:{ icon:"\u270D\uFE0F", title:"Essays" },
+    writing:{ icon:WRITING.glyph, title:WRITING.title }
+  };
+
+  /* desktop icons */
+  const deskIcons = [
+    { id:'welcome', glyph:"\uD83D\uDCD6", label:'Welcome' },
+    { id:'apps',    glyph:PORTFOLIO.apps.glyph,  label:PORTFOLIO.apps.label },
+    { id:'games',   glyph:PORTFOLIO.games.glyph, label:PORTFOLIO.games.label },
+    { id:'music',   glyph:PORTFOLIO.music.glyph, label:PORTFOLIO.music.label },
+    { id:'video',   glyph:PORTFOLIO.video.glyph, label:PORTFOLIO.video.label },
+    { id:'writing', glyph:WRITING.glyph,         label:WRITING.label }
+  ];
+  if(ESSAYS.enabled) deskIcons.push({ id:'essays', glyph:"\u270D\uFE0F", label:'Essays' });
+  deskIcons.push({ id:'contact', glyph:"\u2709\uFE0F", label:'Contact' });
+  deskIcons.forEach(ic => {
+    const b = el('button','desk-icon',
+      '<span class="glyph">'+ic.glyph+'</span><span class="label">'+ic.label.replace(/\n/g,'<br>')+'</span>');
+    b.addEventListener('click', ()=>toggle(ic.id));
+    iconButtons.set(ic.id, b);
+    field.appendChild(b);
+  });
+
+  /* ---- single-panel controller ---- */
+  function toggle(id){
+    if(id==='essays' && !ESSAYS.enabled) return;  // essays hidden -> ignore
+    if(active === id){ closePanel(); return; }   // same icon -> close
+    openPanel(id);                                // new icon -> replace
+  }
+
+  function openPanel(id){
+    active = id;
+    const meta = META[id];
+    panel.innerHTML =
+      '<div class="titlebar">'+
+        '<span class="tb-icon">'+meta.icon+'</span>'+
+        '<span class="tb-title">'+meta.title+'</span>'+
+        '<div class="win-controls"><button class="win-btn close" title="Close">\u2715</button></div>'+
+      '</div><div class="win-body"></div>';
+    panel.querySelector('.close').addEventListener('click', closePanel);
+    renderBody(id);
+    panel.classList.add('open');
+
+    iconButtons.forEach((b,key)=> b.classList.toggle('selected', key===id));
+    if(window.matchMedia('(max-width:1023px)').matches){
+      panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }
+  }
+
+  function closePanel(){
+    active = null;
+    panel.classList.remove('open');
+    panel.innerHTML = '';
+    iconButtons.forEach(b=>b.classList.remove('selected'));
+  }
+
+  function renderBody(id){
+    const body = panel.querySelector('.win-body');
+    body.innerHTML = '';
+    if(id==='welcome') body.append(welcomeBody());
+    else if(id==='contact') body.append(contactBody());
+    else if(id==='help') body.append(helpBody());
+    else if(id==='essays') body.append(essaysBody());
+    else if(PORTFOLIO[id]) body.append(categoryBody(id));
+  }
+
+  /* ---- content ---- */
+  function welcomeBody(){
+    const wrap = el('div','about');
+    const portrait = el('div','portrait', owner.portrait ? '' : "\uD83D\uDCF8");
+    if(owner.portrait){ const im=el('img'); im.src=owner.portrait; im.alt=owner.name; portrait.append(im); }
+    const right = el('div');
+    right.append(el('h1','', 'Hey,<span class="lead">I\u2019m '+owner.name+'.</span>'));
+    right.append(el('p','kicker', owner.role));
+    right.append(el('p','', owner.blurb));
+    const row = el('div','btn-row');
+    const a = el('button','btn primary',"\uD83D\uDDC2\uFE0F Open my work");
+    a.addEventListener('click', ()=>openPanel('apps'));
+    const c = el('button','btn',"\u2709\uFE0F Say hello");
+    c.addEventListener('click', ()=>openPanel('contact'));
+    row.append(a,c); right.append(row);
+    right.append(el('p','hint', 'Click any icon to open its folder. Click it again \u2014 or hit \u2715 \u2014 to close.'));
+    wrap.append(portrait,right);
+    return wrap;
+  }
+
+  function helpBody(){
+    const d = el('div','info');
+    d.append(el('p','', 'This is a desktop, not a scrolling page \u2014 so treat it like one.'));
+    const rows = el('div','rows');
+    rows.innerHTML =
+      '<div>\uD83D\uDDB1\uFE0F <b>Click an icon</b> to open that folder in the panel.</div>'+
+      '<div>\u21A9\uFE0F <b>Click the same icon again</b> (or \u2715) to close it.</div>'+
+      '<div>\uD83D\uDDC2\uFE0F <b>Click a thumbnail</b> to preview a project up close.</div>'+
+      '<div>\u2197\uFE0F <b>View</b> opens the live work; <b>Download</b> grabs the files.</div>';
+    d.append(rows);
+    return d;
+  }
+
+  function contactBody(){
+    const d = el('div','info');
+    d.append(el('p','', 'Want to work together, or just say something nice? Reach out.'));
+    const rows = el('div','rows');
+    rows.append(el('div','', "\u2709\uFE0F <a href=\"mailto:"+owner.email+"\">"+owner.email+"</a>"));
+    Object.entries(owner.links).forEach(([k,v])=>{
+      rows.append(el('div','', "\uD83D\uDD17 <a href=\""+v+"\" target=\"_blank\" rel=\"noopener\">"+k+"</a>"));
+    });
+    d.append(rows);
+    return d;
+  }
+
+  function categoryBody(catKey){
+    const cat = PORTFOLIO[catKey];
+    const wrap = el('div','folder');
+    const head = el('div','folder-head');
+    head.append(el('h2','', cat.title));
+    head.append(el('span','count', cat.items.length+' item'+(cat.items.length!==1?'s':'')));
+    wrap.append(head);
+
+    const grid = el('div','file-grid');
+    cat.items.forEach((item,i)=>{
+      const file = el('div','file');
+      const thumb = el('div','thumb');
+      thumb.style.background = item.hue || cat.hue;
+      if(item.youtube){ const im=el('img'); im.src='https://img.youtube.com/vi/'+item.youtube+'/hqdefault.jpg'; im.alt=item.title; thumb.append(im); }
+      else if(item.img){ const im=el('img'); im.src=item.img; im.alt=item.title; thumb.append(im); }
+      else thumb.append(document.createTextNode(item.glyph || "\uD83D\uDDC2\uFE0F"));
+      thumb.append(el('span','view-tag','click to preview'));
+      thumb.addEventListener('click', ()=>showPreview(catKey,i));
+
+      const meta = el('div','file-meta');
+      meta.append(el('h3','', item.title));
+      meta.append(el('p','', item.desc || ''));
+      const actions = el('div','file-actions');
+      const view = el('a','btn primary','View'); view.href=item.view||'#'; view.target='_blank'; view.rel='noopener';
+      actions.append(view);
+      if(item.download){ const dl=el('a','btn','Download'); dl.href=item.download; dl.setAttribute('download',''); actions.append(dl); }
+      meta.append(actions);
+      file.append(thumb,meta); grid.append(file);
+    });
+    wrap.append(grid);
+    return wrap;
+  }
+
+  /* preview replaces the panel body, with a back link to the folder */
+  function showPreview(catKey,i){
+    const item = PORTFOLIO[catKey].items[i];
+    const body = panel.querySelector('.win-body');
+    body.innerHTML = '';
+    const back = el('button','back-link', "\u2190 Back to "+PORTFOLIO[catKey].title);
+    back.addEventListener('click', ()=>renderBody(catKey));
+    const d = el('div','preview');
+    const big = el('div','big');
+    if(item.youtube){
+      big.classList.add('has-video');
+      const frame = document.createElement('iframe');
+      frame.src = 'https://www.youtube.com/embed/'+item.youtube;
+      frame.title = item.title;
+      frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      frame.allowFullscreen = true;
+      big.append(frame);
+    } else {
+      big.style.background = item.hue || PORTFOLIO[catKey].hue;
+      if(item.img){ const im=el('img'); im.src=item.img; im.alt=item.title; big.append(im); }
+      else big.append(document.createTextNode(item.glyph || "\uD83D\uDDC2\uFE0F"));
+    }
+    d.append(big);
+    d.append(el('h2','', item.title));
+    d.append(el('p','tagline', PORTFOLIO[catKey].title));
+    d.append(el('p','', item.desc || ''));
+    const row = el('div','btn-row');
+    const view = el('a','btn primary',"\u2197 View the work"); view.href=item.view||'#'; view.target='_blank'; view.rel='noopener';
+    row.append(view);
+    if(item.download){ const dl=el('a','btn',"\u2B07 Download"); dl.href=item.download; dl.setAttribute('download',''); row.append(dl); }
+    d.append(row);
+    body.append(back,d);
+  }
+
+  /* essays: a text list; each opens an in-panel reader */
+  function essaysBody(){
+    const wrap = el('div','essay-list');
+    if(!ESSAYS.items.length){ wrap.append(el('p','info','No essays yet.')); return wrap; }
+    ESSAYS.items.forEach((es,i)=>{
+      const item = el('button','essay-item');
+      item.append(el('span','e-title', es.title));
+      const bits = [];
+      if(es.date) bits.push(es.date);
+      bits.push("Read \u2192");
+      item.append(el('span','e-meta', bits.join("  \u00B7  ")));
+      if(es.excerpt) item.append(el('span','e-excerpt', es.excerpt));
+      item.addEventListener('click', ()=>showEssay(i));
+      wrap.append(item);
+    });
+    return wrap;
+  }
+
+  function showEssay(i){
+    const es = ESSAYS.items[i];
+    const body = panel.querySelector('.win-body');
+    body.innerHTML = '';
+    const back = el('button','back-link', "\u2190 Back to Essays");
+    back.addEventListener('click', ()=>renderBody('essays'));
+    const d = el('div','essay-reader');
+    d.append(el('h2','', es.title));
+    if(es.date) d.append(el('p','e-date', es.date));
+    (es.body || '').trim().split(/\n\s*\n/).forEach(para=>{
+      const p = el('p'); p.textContent = para;                 // safe: keeps essay text as-is
+      p.innerHTML = p.innerHTML.replace(/\n/g,'<br>');          // single breaks -> line breaks
+      d.append(p);
+    });
+    if(es.view || es.download){
+      const row = el('div','btn-row');
+      if(es.view){ const v=el('a','btn primary',"\u2197 Open original"); v.href=es.view; v.target='_blank'; v.rel='noopener'; row.append(v); }
+      if(es.download){ const dl=el('a','btn',"\u2B07 Download"); dl.href=es.download; dl.setAttribute('download',''); row.append(dl); }
+      d.append(row);
+    }
+    body.append(back,d);
+  }
+
+  /* menu bar routes through the same toggle */
+  document.querySelectorAll('.menu-item').forEach(b=> b.addEventListener('click', ()=>toggle(b.dataset.open)));
+
+  /* boot into Welcome */
+  openPanel('welcome');
+</script>
+</body>
+</html>
