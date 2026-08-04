@@ -328,6 +328,36 @@
     }
   };
 
+  /* ---------------------------------------------------------------------
+     ZZZ ("Zzz Zzz Zzz") -- appears in BOTH Video Production and Music.
+     Defined once; editing it updates both places.
+
+     This is a VIDEO project: it has a `youtube` id and `details` but NO
+     `play` field. That combination makes BOTH buttons ("Play" and
+     "Learn More") open the same in-panel Learn More page with the video
+     EMBEDDED in the window -- the only difference is that "Play"
+     autoplays and "Learn More" does not.
+
+     Fill in the blanks below whenever you like: put the genre + tools in
+     `desc`, fill each trait `value`, and write the `note`.
+     --------------------------------------------------------------------- */
+  const ZZZ = {
+    title: "Zzz Zzz Zzz",
+    desc: "[Genre / medium], [brief description]. Created using [software / tools].",
+    youtube: "KAbyL2Z_72Q",
+    hue: "#4f7ab5",
+    details: {
+      traits: [
+        { label:"Format",       value:"" },
+        { label:"Software",     value:"" },
+        { label:"Tools/Engine", value:"" },
+        { label:"Length",       value:"" },
+        { label:"Inspirations", value:"" }
+      ],
+      note: "[Write your creator's note here.]"
+    }
+  };
+
   const PORTFOLIO = {
     apps: {
       label: "Applications\n& Utilities", glyph:"\uD83D\uDDA5\uFE0F", hue:"#3B6FD4", title:"Applications & Utilities",
@@ -339,11 +369,11 @@
     },
     music: {
       label:"Music", glyph:"\uD83C\uDFA7", hue:"#3F8F6B", title:"Music",
-      items: []
+      items: [ ZZZ ]
     },
     video: {
       label:"Video\nProduction", glyph:"\uD83C\uDFAC", hue:"#7A4FB5", title:"Video Production",
-      items: []
+      items: [ ZZZ ]
     }
   };
 
@@ -558,18 +588,31 @@
       meta.append(el('h3','', item.title));
       meta.append(el('p','', item.desc || ''));
       const actions = el('div','file-actions');
+      const isVideo = item.youtube && item.details;   // embedded-video project
 
-      if(item.play){
+      if(isVideo){
+        // both open the in-panel Learn More page; Play autoplays, Learn More doesn't
         const play = el('button','btn primary','Play');
-        play.addEventListener('click', ()=>{ openGame(item.play); showDetails(catKey,i); }); // popup + Learn More
+        play.addEventListener('click', ()=>showDetails(catKey,i,{autoplay:true}));
         actions.append(play);
-      }
-      if(item.details){
         const more = el('button','btn','Learn More');
-        more.addEventListener('click', ()=>showDetails(catKey,i));   // in-panel, not a new tab
+        more.addEventListener('click', ()=>showDetails(catKey,i));
         actions.append(more);
-      }
-      if(!item.play && !item.details){
+      } else if(item.play){
+        // game: Play opens a popup window AND the Learn More page
+        const play = el('button','btn primary','Play');
+        play.addEventListener('click', ()=>{ openGame(item.play); showDetails(catKey,i); });
+        actions.append(play);
+        if(item.details){
+          const more = el('button','btn','Learn More');
+          more.addEventListener('click', ()=>showDetails(catKey,i));
+          actions.append(more);
+        }
+      } else if(item.details){
+        const more = el('button','btn primary','Learn More');
+        more.addEventListener('click', ()=>showDetails(catKey,i));
+        actions.append(more);
+      } else {
         const view = el('a','btn primary','View'); view.href=item.view||'#'; view.target='_blank'; view.rel='noopener';
         actions.append(view);
       }
@@ -595,17 +638,31 @@
       'width=760,height=640,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
   }
 
-  /* the "Learn More" dedicated page, rendered inside the panel */
-  function showDetails(catKey,i){
+  /* the "Learn More" dedicated page, rendered inside the panel.
+     opts.autoplay -- when true and the item has a youtube id, the
+     embedded player starts playing immediately. */
+  function showDetails(catKey,i,opts){
+    opts = opts || {};
     const item = PORTFOLIO[catKey].items[i];
     const body = panel.querySelector('.win-body');
     body.innerHTML = '';
     const back = el('button','back-link', "\u2190 Back to "+PORTFOLIO[catKey].title);
     back.addEventListener('click', ()=>renderBody(catKey));
     const d = el('div','preview');
-    const big = el('div','big'); big.style.background = item.hue || PORTFOLIO[catKey].hue;
-    if(item.img){ const im=el('img'); im.src=item.img; im.alt=item.title; big.append(im); }
-    else big.append(document.createTextNode(item.glyph || "\uD83D\uDDC2\uFE0F"));
+    const big = el('div','big');
+    if(item.youtube){
+      big.classList.add('has-video');
+      const frame = document.createElement('iframe');
+      frame.src = 'https://www.youtube.com/embed/'+item.youtube+(opts.autoplay ? '?autoplay=1&rel=0' : '?rel=0');
+      frame.title = item.title;
+      frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      frame.allowFullscreen = true;
+      big.append(frame);
+    } else {
+      big.style.background = item.hue || PORTFOLIO[catKey].hue;
+      if(item.img){ const im=el('img'); im.src=item.img; im.alt=item.title; big.append(im); }
+      else big.append(document.createTextNode(item.glyph || "\uD83D\uDDC2\uFE0F"));
+    }
     d.append(big);
     d.append(el('h2','', item.title));
     d.append(el('p','tagline', PORTFOLIO[catKey].title));
